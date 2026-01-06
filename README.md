@@ -1,4 +1,4 @@
-# video_player_pip
+# awesome_video_player_pip
 
 A Flutter plugin that adds Picture-in-Picture (PiP) support for the video_player package.
 
@@ -195,7 +195,7 @@ This project is licensed under the MIT License - see the LICENSE file for detail
 
 ## Issues and Feedback
 
-Please file issues, bugs, or feature requests in our [issue tracker](https://github.com/AkmaljonAbdirakhimov/video_player_pip/issues).
+Please file issues, bugs, or feature requests in our [issue tracker](https://github.com/rohitchaurasiya151/awesome_video_player_pip/issues).
 
 ## Contributing
 

@@ -1,7 +1,7 @@
 name: awesome_video_player_pip
 description: A Flutter plugin that adds picture-in-picture support for video_player
 version: 0.0.1
-homepage: https://github.com/AkmaljonAbdirakhimov/video_player_pip
+homepage: https://github.com/rohitchaurasiya151/awesome_video_player_pip
 
 environment:
   sdk: ^3.7.2
