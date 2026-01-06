@@ -1,4 +1,4 @@
-package uz.flutterwithakmaljon.video_player_pip
+package com.rocky.pip
 
 import io.flutter.plugin.common.MethodCall
 import io.flutter.plugin.common.MethodChannel
