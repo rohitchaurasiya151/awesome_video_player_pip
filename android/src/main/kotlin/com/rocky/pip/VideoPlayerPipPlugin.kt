@@ -180,6 +180,17 @@ class VideoPlayerPipPlugin: FlutterPlugin, MethodCallHandler, ActivityAware {
                 if (isInPipMode != currentMode) {
                     isInPipMode = currentMode
                     channel.invokeMethod("pipModeChanged", mapOf("isInPipMode" to isInPipMode))
+
+                    if (!isInPipMode) {
+                        // PiP mode exited. Check if it's a restore or a dismiss.
+                        // If the activity is not RESUMED or STARTED, it's likely a dismiss (closed via X).
+                         val state = (activity as? androidx.lifecycle.LifecycleOwner)?.lifecycle?.currentState
+                         if (state == androidx.lifecycle.Lifecycle.State.CREATED || state == androidx.lifecycle.Lifecycle.State.DESTROYED) {
+                             channel.invokeMethod("pipDismissed", null)
+                         }
+                         // Note: If state is STARTED/RESUMED, it's a restore.
+                         // Fallback: Sometimes state update lags. If we are just PAUSED/STOPPED, assume dismiss.
+                    }
                 }
             }
             override fun onLowMemory() {}

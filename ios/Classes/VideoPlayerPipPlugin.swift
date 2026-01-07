@@ -8,6 +8,7 @@ public class VideoPlayerPipPlugin: NSObject, FlutterPlugin, AVPictureInPictureCo
     private var pipController: AVPictureInPictureController?
     private var observationToken: NSKeyValueObservation?
     private var isInPipMode: Bool = false
+    private var isRestoring: Bool = false
     // Removed unused 'private var playerId' to avoid confusion
     
     public static func register(with registrar: FlutterPluginRegistrar) {
@@ -211,14 +212,26 @@ public class VideoPlayerPipPlugin: NSObject, FlutterPlugin, AVPictureInPictureCo
 
     // MARK: - AVPictureInPictureControllerDelegate
     
+    // MARK: - AVPictureInPictureControllerDelegate
+    
     public func pictureInPictureControllerDidStartPictureInPicture(_ pictureInPictureController: AVPictureInPictureController) {
         isInPipMode = true
         channel?.invokeMethod("pipModeChanged", arguments: ["isInPipMode": true])
     }
     
+    public func pictureInPictureControllerWillStartPictureInPicture(_ pictureInPictureController: AVPictureInPictureController) {
+        isRestoring = false
+    }
+    
     public func pictureInPictureControllerDidStopPictureInPicture(_ pictureInPictureController: AVPictureInPictureController) {
         isInPipMode = false
         channel?.invokeMethod("pipModeChanged", arguments: ["isInPipMode": false])
+        
+        if !isRestoring {
+             NSLog("VideoPlayerPip: PiP dismissed by user")
+             channel?.invokeMethod("pipDismissed", arguments: nil)
+        }
+        isRestoring = false
     }
     
     public func pictureInPictureController(_ pictureInPictureController: AVPictureInPictureController, failedToStartPictureInPictureWithError error: Error) {
@@ -228,6 +241,7 @@ public class VideoPlayerPipPlugin: NSObject, FlutterPlugin, AVPictureInPictureCo
     // FIX 4: Exact signature match for the Restore UI delegate
     public func pictureInPictureController(_ pictureInPictureController: AVPictureInPictureController, restoreUserInterfaceForPictureInPictureStopWithCompletionHandler completionHandler: @escaping (Bool) -> Void) {
         NSLog("VideoPlayerPip: Restore UI requested")
+        isRestoring = true
         
         // 1. Tell Flutter to navigate back/render the player
         channel?.invokeMethod("restoreUI", arguments: nil)

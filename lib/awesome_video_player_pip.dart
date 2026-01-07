@@ -105,6 +105,11 @@ class VideoPlayerPip {
     return _onPipModeChangedController.stream;
   }
 
+  /// Stream that emits when PiP is dismissed (closed by user via X or drag).
+  Stream<void> get onPipDismissed {
+    return _onPipDismissedController.stream;
+  }
+
   /// Toggles Picture-in-Picture mode.
   ///
   /// If currently in PiP mode, it will exit. If not in PiP mode, it will
@@ -136,12 +141,16 @@ class VideoPlayerPip {
   }
 
   final _onPipModeChangedController = StreamController<bool>.broadcast();
+  final _onPipDismissedController = StreamController<void>.broadcast();
 
   Future<dynamic> _handleMethodCall(MethodCall call) async {
     switch (call.method) {
       case 'pipModeChanged':
         final bool isInPipMode = call.arguments['isInPipMode'] as bool;
         _onPipModeChangedController.add(isInPipMode);
+        break;
+      case 'pipDismissed':
+        _onPipDismissedController.add(null);
         break;
       case 'pipError':
         final String errorMessage = call.arguments['error'] as String;
@@ -159,6 +168,9 @@ class VideoPlayerPip {
   void dispose() {
     if (!_onPipModeChangedController.isClosed) {
       _onPipModeChangedController.close();
+    }
+    if (!_onPipDismissedController.isClosed) {
+      _onPipDismissedController.close();
     }
     _channel.setMethodCallHandler(null);
   }

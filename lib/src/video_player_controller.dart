@@ -83,16 +83,11 @@ class VideoPlayerValue {
   }) : _isBuffering = isBuffering;
 
   /// Returns an instance for a video that hasn't been loaded.
-  const VideoPlayerValue.uninitialized()
-    : this(duration: Duration.zero, isInitialized: false);
+  const VideoPlayerValue.uninitialized() : this(duration: Duration.zero, isInitialized: false);
 
   /// Returns an instance with the given [errorDescription].
   const VideoPlayerValue.erroneous(String errorDescription)
-    : this(
-        duration: Duration.zero,
-        isInitialized: false,
-        errorDescription: errorDescription,
-      );
+    : this(duration: Duration.zero, isInitialized: false, errorDescription: errorDescription);
 
   /// This constant is just to indicate that parameter is not passed to [copyWith]
   /// workaround for this issue https://github.com/dart-lang/language/issues/2009
@@ -140,8 +135,7 @@ class VideoPlayerValue {
         }
 
         // Get the last buffered range, or -1 if none exists
-        final int bufferMs =
-            buffered.isNotEmpty ? buffered.last.end.inMilliseconds : -1;
+        final int bufferMs = buffered.isNotEmpty ? buffered.last.end.inMilliseconds : -1;
 
         return positionMs >= bufferMs;
       }
@@ -235,9 +229,7 @@ class VideoPlayerValue {
       playbackSpeed: playbackSpeed ?? this.playbackSpeed,
       rotationCorrection: rotationCorrection ?? this.rotationCorrection,
       errorDescription:
-          errorDescription != _defaultErrorDescription
-              ? errorDescription
-              : this.errorDescription,
+          errorDescription != _defaultErrorDescription ? errorDescription : this.errorDescription,
       isCompleted: isCompleted ?? this.isCompleted,
     );
   }
@@ -447,19 +439,16 @@ class VideoPlayerController extends ValueNotifier<VideoPlayerValue> {
   _VideoAppLifeCycleObserver? _lifeCycleObserver;
 
   /// The id of a texture that hasn't been initialized.
-  @visibleForTesting
   static const int kUninitializedTextureId = -1;
   int _textureId = kUninitializedTextureId;
 
   /// This is just exposed for testing. It shouldn't be used by anyone depending
   /// on the plugin.
-  @visibleForTesting
   int get textureId => _textureId;
 
   /// Attempts to open the given [dataSource] and load metadata about the video.
   Future<void> initialize() async {
-    final bool allowBackgroundPlayback =
-        videoPlayerOptions?.allowBackgroundPlayback ?? false;
+    final bool allowBackgroundPlayback = videoPlayerOptions?.allowBackgroundPlayback ?? false;
     if (!allowBackgroundPlayback) {
       _lifeCycleObserver = _VideoAppLifeCycleObserver(this);
     }
@@ -488,20 +477,14 @@ class VideoPlayerController extends ValueNotifier<VideoPlayerValue> {
           httpHeaders: httpHeaders,
         );
       case DataSourceType.contentUri:
-        dataSourceDescription = DataSource(
-          sourceType: DataSourceType.contentUri,
-          uri: dataSource,
-        );
+        dataSourceDescription = DataSource(sourceType: DataSourceType.contentUri, uri: dataSource);
     }
 
     if (videoPlayerOptions?.mixWithOthers != null) {
-      await _videoPlayerPlatform.setMixWithOthers(
-        videoPlayerOptions!.mixWithOthers,
-      );
+      await _videoPlayerPlatform.setMixWithOthers(videoPlayerOptions!.mixWithOthers);
     }
 
-    final platformViewType =
-        Platform.isIOS ? VideoViewType.platformView : viewType;
+    final platformViewType = Platform.isIOS ? VideoViewType.platformView : viewType;
 
     final VideoCreationOptions creationOptions = VideoCreationOptions(
       dataSource: dataSourceDescription,
@@ -509,17 +492,13 @@ class VideoPlayerController extends ValueNotifier<VideoPlayerValue> {
     );
 
     _textureId =
-        (await _videoPlayerPlatform.createWithOptions(creationOptions)) ??
-        kUninitializedTextureId;
+        (await _videoPlayerPlatform.createWithOptions(creationOptions)) ?? kUninitializedTextureId;
     _creatingCompleter!.complete(null);
     final Completer<void> initializingCompleter = Completer<void>();
 
     // Apply the web-specific options
     if (kIsWeb && videoPlayerOptions?.webOptions != null) {
-      await _videoPlayerPlatform.setWebOptions(
-        _textureId,
-        videoPlayerOptions!.webOptions!,
-      );
+      await _videoPlayerPlatform.setWebOptions(_textureId, videoPlayerOptions!.webOptions!);
     }
 
     void eventListener(VideoEvent event) {
@@ -566,10 +545,7 @@ class VideoPlayerController extends ValueNotifier<VideoPlayerValue> {
           value = value.copyWith(isBuffering: false);
         case VideoEventType.isPlayingStateUpdate:
           if (event.isPlaying ?? false) {
-            value = value.copyWith(
-              isPlaying: event.isPlaying,
-              isCompleted: false,
-            );
+            value = value.copyWith(isPlaying: event.isPlaying, isCompleted: false);
           } else {
             value = value.copyWith(isPlaying: event.isPlaying);
           }
@@ -660,9 +636,7 @@ class VideoPlayerController extends ValueNotifier<VideoPlayerValue> {
       await _videoPlayerPlatform.play(_textureId);
 
       _timer?.cancel();
-      _timer = Timer.periodic(const Duration(milliseconds: 100), (
-        Timer timer,
-      ) async {
+      _timer = Timer.periodic(const Duration(milliseconds: 100), (Timer timer) async {
         if (_isDisposed) {
           return;
         }
@@ -702,10 +676,7 @@ class VideoPlayerController extends ValueNotifier<VideoPlayerValue> {
       return;
     }
 
-    await _videoPlayerPlatform.setPlaybackSpeed(
-      _textureId,
-      value.playbackSpeed,
-    );
+    await _videoPlayerPlatform.setPlaybackSpeed(_textureId, value.playbackSpeed);
   }
 
   /// The position in the current video.
@@ -762,10 +733,7 @@ class VideoPlayerController extends ValueNotifier<VideoPlayerValue> {
   ///   the plugin also reports errors.
   Future<void> setPlaybackSpeed(double speed) async {
     if (speed < 0) {
-      throw ArgumentError.value(
-        speed,
-        'Negative playback speeds are generally unsupported.',
-      );
+      throw ArgumentError.value(speed, 'Negative playback speeds are generally unsupported.');
     } else if (speed == 0) {
       throw ArgumentError.value(
         speed,
@@ -787,10 +755,7 @@ class VideoPlayerController extends ValueNotifier<VideoPlayerValue> {
   /// * >0: The caption will have a negative offset. So you will get caption text from the past.
   /// * <0: The caption will have a positive offset. So you will get caption text from the future.
   void setCaptionOffset(Duration offset) {
-    value = value.copyWith(
-      captionOffset: offset,
-      caption: _getCaptionAt(value.position),
-    );
+    value = value.copyWith(captionOffset: offset, caption: _getCaptionAt(value.position));
   }
 
   /// The closed caption based on the current [position] in the video.
@@ -824,16 +789,12 @@ class VideoPlayerController extends ValueNotifier<VideoPlayerValue> {
   /// Sets a closed caption file.
   ///
   /// If [closedCaptionFile] is null, closed captions will be removed.
-  Future<void> setClosedCaptionFile(
-    Future<ClosedCaptionFile>? closedCaptionFile,
-  ) async {
+  Future<void> setClosedCaptionFile(Future<ClosedCaptionFile>? closedCaptionFile) async {
     await _updateClosedCaptionWithFuture(closedCaptionFile);
     _closedCaptionFileFuture = closedCaptionFile;
   }
 
-  Future<void> _updateClosedCaptionWithFuture(
-    Future<ClosedCaptionFile>? closedCaptionFile,
-  ) async {
+  Future<void> _updateClosedCaptionWithFuture(Future<ClosedCaptionFile>? closedCaptionFile) async {
     _closedCaptionFile = await closedCaptionFile;
     value = value.copyWith(caption: _getCaptionAt(value.position));
   }
@@ -1016,11 +977,7 @@ class VideoScrubber extends StatefulWidget {
   ///
   /// [controller] is the [VideoPlayerController] that will be controlled by
   /// this scrubber.
-  const VideoScrubber({
-    super.key,
-    required this.child,
-    required this.controller,
-  });
+  const VideoScrubber({super.key, required this.child, required this.controller});
 
   /// The widget that will be displayed inside the gesture detector.
   final Widget child;
@@ -1066,8 +1023,7 @@ class _VideoScrubberState extends State<VideoScrubber> {
         seekToRelativePosition(details.globalPosition);
       },
       onHorizontalDragEnd: (DragEndDetails details) {
-        if (_controllerWasPlaying &&
-            controller.value.position != controller.value.duration) {
+        if (_controllerWasPlaying && controller.value.position != controller.value.duration) {
           controller.play();
         }
       },
@@ -1197,10 +1153,7 @@ class _VideoProgressIndicatorState extends State<VideoProgressIndicator> {
       child: progressIndicator,
     );
     if (widget.allowScrubbing) {
-      return VideoScrubber(
-        controller: controller,
-        child: paddedProgressIndicator,
-      );
+      return VideoScrubber(controller: controller, child: paddedProgressIndicator);
     } else {
       return paddedProgressIndicator;
     }
@@ -1252,9 +1205,7 @@ class ClosedCaption extends StatelessWidget {
 
     final TextStyle effectiveTextStyle =
         textStyle ??
-        DefaultTextStyle.of(
-          context,
-        ).style.copyWith(fontSize: 36.0, color: Colors.white);
+        DefaultTextStyle.of(context).style.copyWith(fontSize: 36.0, color: Colors.white);
 
     return Align(
       alignment: Alignment.bottomCenter,

@@ -17,12 +17,7 @@ class MyApp extends StatelessWidget {
     return MaterialApp(
       title: 'Video Player PiP Example',
       builder: (context, child) {
-        return Stack(
-          children: [
-            if (child != null) child,
-            const GlobalPlayerOverlay(),
-          ],
-        );
+        return Stack(children: [if (child != null) child, const GlobalPlayerOverlay()]);
       },
       home: const HomeScreen(),
     );
@@ -50,8 +45,7 @@ class PlayerManager extends ChangeNotifier {
     isMinimized = false;
     notifyListeners();
 
-    controller = VideoPlayerController.networkUrl(Uri.parse(url),
-        videoPlayerOptions: options)
+    controller = VideoPlayerController.networkUrl(Uri.parse(url), videoPlayerOptions: options)
       ..initialize().then((_) {
         controller!.play();
         notifyListeners(); // Update UI with initialized controller
@@ -85,8 +79,7 @@ class PlayerManager extends ChangeNotifier {
     } else if (Platform.isIOS) {
       if (controller != null) {
         final ratio = controller!.value.aspectRatio;
-        await VideoPlayerPip.enterPipMode(controller!,
-            width: 300, height: (300 / ratio).toInt());
+        await VideoPlayerPip.enterPipMode(controller!, width: 300, height: (300 / ratio).toInt());
         Future.delayed(const Duration(seconds: 1), () {
           isMinimized = true;
           notifyListeners();
@@ -128,8 +121,7 @@ class GlobalPlayerOverlay extends StatefulWidget {
   State<GlobalPlayerOverlay> createState() => _GlobalPlayerOverlayState();
 }
 
-class _GlobalPlayerOverlayState extends State<GlobalPlayerOverlay>
-    with WidgetsBindingObserver {
+class _GlobalPlayerOverlayState extends State<GlobalPlayerOverlay> with WidgetsBindingObserver {
   // Draggable position state
   double _bottom = 100.0;
   double _right = 20.0;
@@ -143,13 +135,17 @@ class _GlobalPlayerOverlayState extends State<GlobalPlayerOverlay>
     WidgetsBinding.instance.addObserver(this);
     PlayerManager.instance.addListener(_onPlayerStateChange);
 
-    _pipSubscription =
-        VideoPlayerPip.instance.onPipModeChanged.listen((isInPipMode) {
+    _pipSubscription = VideoPlayerPip.instance.onPipModeChanged.listen((isInPipMode) {
       if (mounted) {
         setState(() {
           _isInPipMode = isInPipMode;
         });
       }
+    });
+
+    VideoPlayerPip.instance.onPipDismissed.listen((_) {
+      print("PiP dismissed by user. Closing player...");
+      PlayerManager.instance.closePlayer();
     });
   }
 
@@ -168,8 +164,7 @@ class _GlobalPlayerOverlayState extends State<GlobalPlayerOverlay>
   @override
   void didChangeAppLifecycleState(AppLifecycleState state) {
     final manager = PlayerManager.instance;
-    if (manager.controller == null || !manager.controller!.value.isInitialized)
-      return;
+    if (manager.controller == null || !manager.controller!.value.isInitialized) return;
 
     if (state == AppLifecycleState.resumed) {
       // Stop PiP on resume if needed, or sync state
@@ -178,14 +173,12 @@ class _GlobalPlayerOverlayState extends State<GlobalPlayerOverlay>
       if (Platform.isAndroid && manager.controller!.value.isPlaying) {
         // Android requires entering PiP in onPause (inactive), not onStop (paused)
         final ratio = manager.controller!.value.aspectRatio;
-        VideoPlayerPip.enterPipMode(manager.controller!,
-            width: 300, height: (300 / ratio).toInt());
+        VideoPlayerPip.enterPipMode(manager.controller!, width: 300, height: (300 / ratio).toInt());
       }
     } else if (state == AppLifecycleState.paused) {
       if (Platform.isIOS && manager.controller!.value.isPlaying) {
         final ratio = manager.controller!.value.aspectRatio;
-        VideoPlayerPip.enterPipMode(manager.controller!,
-            width: 300, height: (300 / ratio).toInt());
+        VideoPlayerPip.enterPipMode(manager.controller!, width: 300, height: (300 / ratio).toInt());
       }
     }
   }
@@ -225,9 +218,7 @@ class _GlobalPlayerOverlayState extends State<GlobalPlayerOverlay>
     }
 
     // Wrap in Material/Overlay support
-    return manager.isMinimized
-        ? _buildMiniPlayer(manager)
-        : _buildFullScreenPlayer(manager);
+    return manager.isMinimized ? _buildMiniPlayer(manager) : _buildFullScreenPlayer(manager);
   }
 
   Widget _buildMiniPlayer(PlayerManager manager) {
@@ -266,9 +257,7 @@ class _GlobalPlayerOverlayState extends State<GlobalPlayerOverlay>
                 child: IconButton(
                   onPressed: manager.togglePlayPause,
                   icon: Icon(
-                    manager.controller!.value.isPlaying
-                        ? Icons.pause
-                        : Icons.play_arrow,
+                    manager.controller!.value.isPlaying ? Icons.pause : Icons.play_arrow,
                     color: Colors.white,
                     size: 30,
                   ),
@@ -283,8 +272,7 @@ class _GlobalPlayerOverlayState extends State<GlobalPlayerOverlay>
                   child: Container(
                     color: Colors.black26,
                     padding: const EdgeInsets.all(4),
-                    child:
-                        const Icon(Icons.close, color: Colors.white, size: 16),
+                    child: const Icon(Icons.close, color: Colors.white, size: 16),
                   ),
                 ),
               ),
@@ -301,8 +289,7 @@ class _GlobalPlayerOverlayState extends State<GlobalPlayerOverlay>
 
                       // Clamp width
                       if (_playerWidth < 100) _playerWidth = 100;
-                      if (_playerWidth >
-                          MediaQuery.of(context).size.width - 20) {
+                      if (_playerWidth > MediaQuery.of(context).size.width - 20) {
                         _playerWidth = MediaQuery.of(context).size.width - 20;
                       }
                     });
@@ -310,8 +297,7 @@ class _GlobalPlayerOverlayState extends State<GlobalPlayerOverlay>
                   child: Container(
                     color: Colors.black26,
                     padding: const EdgeInsets.all(4),
-                    child: const Icon(Icons.open_with,
-                        color: Colors.white, size: 16),
+                    child: const Icon(Icons.open_with, color: Colors.white, size: 16),
                   ),
                 ),
               ),
@@ -336,11 +322,7 @@ class _GlobalPlayerOverlayState extends State<GlobalPlayerOverlay>
               icon: const Icon(Icons.keyboard_arrow_down), // Minimize icon
               onPressed: manager.minimize,
             ),
-            actions: [
-              IconButton(
-                  icon: const Icon(Icons.close),
-                  onPressed: manager.closePlayer),
-            ],
+            actions: [IconButton(icon: const Icon(Icons.close), onPressed: manager.closePlayer)],
           ),
           body: Stack(
             children: [
@@ -354,9 +336,7 @@ class _GlobalPlayerOverlayState extends State<GlobalPlayerOverlay>
                 child: IconButton(
                   onPressed: manager.togglePlayPause,
                   icon: Icon(
-                    manager.controller!.value.isPlaying
-                        ? Icons.pause
-                        : Icons.play_arrow,
+                    manager.controller!.value.isPlaying ? Icons.pause : Icons.play_arrow,
                     size: 50,
                     color: Colors.white,
                   ),
@@ -369,12 +349,15 @@ class _GlobalPlayerOverlayState extends State<GlobalPlayerOverlay>
                   onPressed: () {
                     // Manual Trigger for System PiP
                     final ratio = manager.controller!.value.aspectRatio;
-                    VideoPlayerPip.enterPipMode(manager.controller!,
-                        width: 300, height: (300 / ratio).toInt());
+                    VideoPlayerPip.enterPipMode(
+                      manager.controller!,
+                      width: 300,
+                      height: (300 / ratio).toInt(),
+                    );
                   },
                   child: const Icon(Icons.picture_in_picture),
                 ),
-              )
+              ),
             ],
           ),
         ),
@@ -405,15 +388,17 @@ class HomeScreen extends StatelessWidget {
               const SizedBox(height: 20),
               ElevatedButton(
                 onPressed: () => PlayerManager.instance.playVideo(
-                    'https://test-streams.mux.dev/x36xhzz/x36xhzz.m3u8'),
+                  'https://test-streams.mux.dev/x36xhzz/x36xhzz.m3u8',
+                ),
                 child: const Text('Play'),
               ),
               const SizedBox(height: 20),
               ElevatedButton(
                 onPressed: () {
                   // Navigation Test
-                  Navigator.of(context).push(
-                      MaterialPageRoute(builder: (_) => const SecondScreen()));
+                  Navigator.of(
+                    context,
+                  ).push(MaterialPageRoute(builder: (_) => const SecondScreen()));
                 },
                 child: const Text('Go to Second Screen'),
               ),

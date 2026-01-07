@@ -1,3 +1,4 @@
+import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:awesome_video_player_pip/awesome_video_player_pip.dart';
 import 'package:awesome_video_player_pip/video_player_pip_platform_interface.dart';
@@ -25,6 +26,7 @@ class MockVideoPlayerPipPlatform with MockPlatformInterfaceMixin implements Vide
 }
 
 void main() {
+  TestWidgetsFlutterBinding.ensureInitialized();
   final VideoPlayerPipPlatform initialPlatform = VideoPlayerPipPlatform.instance;
 
   test('$MethodChannelVideoPlayerPip is the default instance', () {
@@ -68,5 +70,22 @@ void main() {
     VideoPlayerPipPlatform.instance = fakePlatform;
 
     expect(await VideoPlayerPip.exitPipMode(), true);
+  });
+
+  test('onPipDismissed', () async {
+    final List<void> log = <void>[];
+
+    VideoPlayerPip.instance.onPipDismissed.listen((_) {
+      log.add(null);
+    });
+
+    // Simulate native invoking the method
+    await TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger.handlePlatformMessage(
+      'video_player_pip',
+      const StandardMethodCodec().encodeMethodCall(const MethodCall('pipDismissed')),
+      (ByteData? data) {},
+    );
+
+    expect(log, hasLength(1));
   });
 }
