@@ -2,6 +2,7 @@ import Flutter
 import UIKit
 import AVFoundation
 import AVKit
+import MediaPlayer
 
 public class VideoPlayerPipPlugin: NSObject, FlutterPlugin, AVPictureInPictureControllerDelegate {
     private var channel: FlutterMethodChannel?
@@ -202,11 +203,54 @@ public class VideoPlayerPipPlugin: NSObject, FlutterPlugin, AVPictureInPictureCo
     private func configureAudioSession() {
         let session = AVAudioSession.sharedInstance()
         do {
-            // Using .playback is correct for PiP
             try session.setCategory(.playback, mode: .moviePlayback)
             try session.setActive(true)
         } catch {
             NSLog("VideoPlayerPip: Audio session error: \(error.localizedDescription)")
+        }
+        
+        setupRemoteCommands()
+    }
+
+    private func setupRemoteCommands() {
+        let commandCenter = MPRemoteCommandCenter.shared()
+        
+        // Enable Next/Prev
+        commandCenter.nextTrackCommand.isEnabled = true
+        commandCenter.previousTrackCommand.isEnabled = true
+        commandCenter.playCommand.isEnabled = true
+        commandCenter.pauseCommand.isEnabled = true
+        
+        // Remove existing targets to avoid duplicates
+        commandCenter.nextTrackCommand.removeTarget(nil)
+        commandCenter.previousTrackCommand.removeTarget(nil)
+         commandCenter.playCommand.removeTarget(nil)
+        commandCenter.pauseCommand.removeTarget(nil)
+        
+        commandCenter.nextTrackCommand.addTarget { [weak self] event in
+            self?.channel?.invokeMethod("pipAction", arguments: ["action": "next"])
+            return .success
+        }
+        
+        commandCenter.previousTrackCommand.addTarget { [weak self] event in
+            self?.channel?.invokeMethod("pipAction", arguments: ["action": "previous"])
+            return .success
+        }
+        
+        commandCenter.playCommand.addTarget { [weak self] event in
+             // Let the player handle play automatically (AVKit usually does), 
+             // but we also notify Flutter in case app logic is needed
+            self?.channel?.invokeMethod("pipAction", arguments: ["action": "play"])
+            
+            // If we are controlling the player directly, we might need to play manually
+            // self?.pipController?.playerLayer?.player?.play()
+             return .success
+        }
+        
+        commandCenter.pauseCommand.addTarget { [weak self] event in
+             self?.channel?.invokeMethod("pipAction", arguments: ["action": "pause"])
+             // self?.pipController?.playerLayer?.player?.pause()
+             return .success
         }
     }
 

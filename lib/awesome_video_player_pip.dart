@@ -110,6 +110,12 @@ class VideoPlayerPip {
     return _onPipDismissedController.stream;
   }
 
+  /// Stream associated with background controls (Notification/PiP window).
+  /// Emits: 'next', 'previous', 'play', 'pause'.
+  Stream<String> get onPipAction {
+    return _onPipActionController.stream;
+  }
+
   /// Toggles Picture-in-Picture mode.
   ///
   /// If currently in PiP mode, it will exit. If not in PiP mode, it will
@@ -130,6 +136,20 @@ class VideoPlayerPip {
     }
   }
 
+  /// Updates the background media state (Android only).
+  ///
+  /// Call this when the player state changes (play/pause) to ensure
+  /// the notification controls stay in sync.
+  Future<void> updateBackgroundPlaybackState({required bool isPlaying}) async {
+    // 3 = STATE_PLAYING, 2 = STATE_PAUSED
+    final int state = isPlaying ? 3 : 2;
+    try {
+      await _channel.invokeMethod('updateMediaState', {'state': state});
+    } on PlatformException catch (_) {
+      // Ignore on iOS or if method not implemented
+    }
+  }
+
   // Singleton instance
   static final VideoPlayerPip _instance = VideoPlayerPip._();
 
@@ -142,6 +162,7 @@ class VideoPlayerPip {
 
   final _onPipModeChangedController = StreamController<bool>.broadcast();
   final _onPipDismissedController = StreamController<void>.broadcast();
+  final _onPipActionController = StreamController<String>.broadcast();
 
   Future<dynamic> _handleMethodCall(MethodCall call) async {
     switch (call.method) {
@@ -151,6 +172,11 @@ class VideoPlayerPip {
         break;
       case 'pipDismissed':
         _onPipDismissedController.add(null);
+        break;
+      case 'pipAction':
+        // Events: next, previous, play, pause
+        final String action = call.arguments['action'] as String;
+        _onPipActionController.add(action);
         break;
       case 'pipError':
         final String errorMessage = call.arguments['error'] as String;

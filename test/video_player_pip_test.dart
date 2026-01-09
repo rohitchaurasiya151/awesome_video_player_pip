@@ -88,4 +88,24 @@ void main() {
 
     expect(log, hasLength(1));
   });
+  test('onPipAction', () async {
+    final List<String> log = <String>[];
+
+    VideoPlayerPip.instance.onPipAction.listen((action) {
+      log.add(action);
+    });
+
+    final actions = ['next', 'previous', 'play', 'pause'];
+
+    for (final action in actions) {
+      // Simulate native invoking the method
+      await TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger.handlePlatformMessage(
+        'video_player_pip',
+        const StandardMethodCodec().encodeMethodCall(MethodCall('pipAction', {'action': action})),
+        (ByteData? data) {},
+      );
+    }
+
+    expect(log, equals(actions));
+  });
 }

@@ -147,10 +147,39 @@ class _GlobalPlayerOverlayState extends State<GlobalPlayerOverlay> with WidgetsB
       print("PiP dismissed by user. Closing player...");
       PlayerManager.instance.closePlayer();
     });
+
+    VideoPlayerPip.instance.onPipAction.listen((action) {
+      final manager = PlayerManager.instance;
+      switch (action) {
+        case 'play':
+          manager.controller?.play();
+          break;
+        case 'pause':
+          manager.controller?.pause();
+          break;
+        case 'next':
+          print("Next video requested");
+          break;
+        case 'previous':
+          print("Previous video requested");
+          break;
+      }
+    });
   }
 
+  bool _wasPlaying = false;
   void _onPlayerStateChange() {
     if (mounted) setState(() {});
+
+    // Sync state with native (Android MediaSession)
+    final manager = PlayerManager.instance;
+    if (manager.controller != null && manager.controller!.value.isInitialized) {
+      final isPlaying = manager.controller!.value.isPlaying;
+      if (isPlaying != _wasPlaying) {
+        _wasPlaying = isPlaying;
+        VideoPlayerPip.instance.updateBackgroundPlaybackState(isPlaying: isPlaying);
+      }
+    }
   }
 
   @override

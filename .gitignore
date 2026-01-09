@@ -61,3 +61,4 @@ app.*.map.json
 **/ios/Pods/
 **/ios/Runner.xcworkspace/xcuserdata
 **/ios/.generated/
+build/  
