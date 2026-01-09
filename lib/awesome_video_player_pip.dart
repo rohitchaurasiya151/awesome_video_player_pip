@@ -136,17 +136,44 @@ class VideoPlayerPip {
     }
   }
 
-  /// Updates the background media state (Android only).
+  /// Updates the background media state (Android & iOS).
   ///
   /// Call this when the player state changes (play/pause) to ensure
   /// the notification controls stay in sync.
-  Future<void> updateBackgroundPlaybackState({required bool isPlaying}) async {
+  Future<void> updateBackgroundPlaybackState({
+    required bool isPlaying,
+    double position = 0.0,
+    double speed = 1.0,
+  }) async {
     // 3 = STATE_PLAYING, 2 = STATE_PAUSED
     final int state = isPlaying ? 3 : 2;
     try {
-      await _channel.invokeMethod('updateMediaState', {'state': state});
+      await _channel.invokeMethod('updateMediaState', {
+        'state': state,
+        'position': position,
+        'speed': speed,
+      });
     } on PlatformException catch (_) {
       // Ignore on iOS or if method not implemented
+    }
+  }
+
+  /// Updates the background media metadata (Title, Artist, Duration).
+  ///
+  /// Call this when loading a video or changing tracks.
+  Future<void> updateMediaMetadata({
+    required String title,
+    required String artist,
+    double duration = 0.0,
+  }) async {
+    try {
+      await _channel.invokeMethod('updateMediaMetadata', {
+        'title': title,
+        'artist': artist,
+        'duration': duration,
+      });
+    } on PlatformException catch (e) {
+      debugPrint("Failed to update media metadata: ${e.message}");
     }
   }
 

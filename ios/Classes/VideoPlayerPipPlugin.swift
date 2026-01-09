@@ -62,6 +62,12 @@ public class VideoPlayerPipPlugin: NSObject, FlutterPlugin, AVPictureInPictureCo
             
         case "isInPipMode":
             result(isInPipMode)
+
+        case "updateMediaState":
+             updateMediaState(call, result: result)
+             
+        case "updateMediaMetadata":
+            updateMediaMetadata(call, result: result)
             
         default:
             result(FlutterMethodNotImplemented)
@@ -200,6 +206,57 @@ public class VideoPlayerPipPlugin: NSObject, FlutterPlugin, AVPictureInPictureCo
         }
     }
     
+    private func updateMediaState(_ call: FlutterMethodCall, result: @escaping FlutterResult) {
+        guard let args = call.arguments as? [String: Any],
+              let state = args["state"] as? Int else {
+            result(false)
+            return
+        }
+
+        // 3 = STATE_PLAYING, 2 = STATE_PAUSED (matches Android PlaybackStateCompat)
+        let isPlaying = (state == 3)
+        let playbackRate = isPlaying ? 1.0 : 0.0
+        let position = args["position"] as? Double ?? 0.0
+        let speed = args["speed"] as? Double ?? 1.0
+
+        var nowPlayingInfo = MPNowPlayingInfoCenter.default().nowPlayingInfo ?? [String: Any]()
+        nowPlayingInfo[MPNowPlayingInfoPropertyPlaybackRate] = isPlaying ? speed : 0.0
+        nowPlayingInfo[MPNowPlayingInfoPropertyElapsedPlaybackTime] = position
+        
+        MPNowPlayingInfoCenter.default().nowPlayingInfo = nowPlayingInfo
+        
+        result(true)
+    }
+
+    private func updateMediaMetadata(_ call: FlutterMethodCall, result: @escaping FlutterResult) {
+        guard let args = call.arguments as? [String: Any] else {
+            result(false)
+            return
+        }
+
+        let title = args["title"] as? String ?? "Video Player"
+        let artist = args["artist"] as? String ?? ""
+        let duration = args["duration"] as? Double ?? 0.0
+        
+        var nowPlayingInfo = MPNowPlayingInfoCenter.default().nowPlayingInfo ?? [String: Any]()
+        
+        nowPlayingInfo[MPMediaItemPropertyTitle] = title
+        nowPlayingInfo[MPMediaItemPropertyArtist] = artist
+        nowPlayingInfo[MPNowPlayingInfoPropertyMediaType] = MPNowPlayingInfoMediaType.video.rawValue
+        
+        if duration > 0 {
+            nowPlayingInfo[MPMediaItemPropertyPlaybackDuration] = duration
+        }
+        
+        // Ensure we don't lose the playback rate if it was set
+        if nowPlayingInfo[MPNowPlayingInfoPropertyPlaybackRate] == nil {
+             nowPlayingInfo[MPNowPlayingInfoPropertyPlaybackRate] = 1.0 // Default to playing if not set
+        }
+
+        MPNowPlayingInfoCenter.default().nowPlayingInfo = nowPlayingInfo
+        result(true)
+    }
+
     private func configureAudioSession() {
         let session = AVAudioSession.sharedInstance()
         do {
@@ -220,12 +277,14 @@ public class VideoPlayerPipPlugin: NSObject, FlutterPlugin, AVPictureInPictureCo
         commandCenter.previousTrackCommand.isEnabled = true
         commandCenter.playCommand.isEnabled = true
         commandCenter.pauseCommand.isEnabled = true
+        commandCenter.changePlaybackPositionCommand.isEnabled = true
         
         // Remove existing targets to avoid duplicates
         commandCenter.nextTrackCommand.removeTarget(nil)
         commandCenter.previousTrackCommand.removeTarget(nil)
          commandCenter.playCommand.removeTarget(nil)
         commandCenter.pauseCommand.removeTarget(nil)
+        commandCenter.changePlaybackPositionCommand.removeTarget(nil)
         
         commandCenter.nextTrackCommand.addTarget { [weak self] event in
             self?.channel?.invokeMethod("pipAction", arguments: ["action": "next"])
@@ -251,6 +310,14 @@ public class VideoPlayerPipPlugin: NSObject, FlutterPlugin, AVPictureInPictureCo
              self?.channel?.invokeMethod("pipAction", arguments: ["action": "pause"])
              // self?.pipController?.playerLayer?.player?.pause()
              return .success
+        }
+        
+        commandCenter.changePlaybackPositionCommand.addTarget { [weak self] event in
+            if let event = event as? MPChangePlaybackPositionCommandEvent {
+                self?.channel?.invokeMethod("pipAction", arguments: ["action": "seekTo:\(event.positionTime)"])
+                return .success
+            }
+            return .commandFailed
         }
     }
 

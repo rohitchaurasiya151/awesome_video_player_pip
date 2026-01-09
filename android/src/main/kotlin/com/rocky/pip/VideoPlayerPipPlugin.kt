@@ -1,5 +1,8 @@
 package com.rocky.pip
 
+import android.content.BroadcastReceiver
+import android.content.Intent
+import android.content.IntentFilter
 import android.app.Activity
 import android.app.PictureInPictureParams
 import android.content.Context
@@ -51,10 +54,12 @@ class VideoPlayerPipPlugin: FlutterPlugin, MethodCallHandler, ActivityAware {
         mediaSession = android.support.v4.media.session.MediaSessionCompat(flutterPluginBinding.applicationContext, TAG)
         mediaSession?.setCallback(object : android.support.v4.media.session.MediaSessionCompat.Callback() {
             override fun onPlay() {
+                Log.d(TAG, "MediaSession Callback: onPlay")
                 channel.invokeMethod("pipAction", mapOf("action" to "play"))
             }
 
             override fun onPause() {
+                Log.d(TAG, "MediaSession Callback: onPause")
                 channel.invokeMethod("pipAction", mapOf("action" to "pause"))
             }
             
@@ -70,6 +75,41 @@ class VideoPlayerPipPlugin: FlutterPlugin, MethodCallHandler, ActivityAware {
         
         // Set initial playback state
         updatePlaybackState(android.support.v4.media.session.PlaybackStateCompat.STATE_PLAYING)
+
+        // Register BroadcastReceiver
+        val filter = IntentFilter().apply {
+            addAction("com.rocky.pip.ACTION_PLAY")
+            addAction("com.rocky.pip.ACTION_PAUSE")
+            addAction("com.rocky.pip.ACTION_NEXT")
+            addAction("com.rocky.pip.ACTION_PREVIOUS")
+        }
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+            flutterPluginBinding.applicationContext.registerReceiver(mediaReceiver, filter, Context.RECEIVER_EXPORTED)
+        } else {
+            flutterPluginBinding.applicationContext.registerReceiver(mediaReceiver, filter)
+        }
+    }
+    
+    private val mediaReceiver = object : BroadcastReceiver() {
+        override fun onReceive(context: Context?, intent: Intent?) {
+            Log.d(TAG, "BroadcastReceiver onReceive: ${intent?.action}")
+            when (intent?.action) {
+                "com.rocky.pip.ACTION_PLAY" -> {
+                     Log.d(TAG, "Receiver action: PLAY -> TransportControls.play()")
+                     mediaSession?.controller?.transportControls?.play()
+                }
+                "com.rocky.pip.ACTION_PAUSE" -> {
+                     Log.d(TAG, "Receiver action: PAUSE -> TransportControls.pause()")
+                     mediaSession?.controller?.transportControls?.pause()
+                }
+                "com.rocky.pip.ACTION_NEXT" -> {
+                     mediaSession?.controller?.transportControls?.skipToNext()
+                }
+                "com.rocky.pip.ACTION_PREVIOUS" -> {
+                     mediaSession?.controller?.transportControls?.skipToPrevious()
+                }
+            }
+        }
     }
     
     // Helper to update playback state
@@ -144,6 +184,7 @@ class VideoPlayerPipPlugin: FlutterPlugin, MethodCallHandler, ActivityAware {
     }
 
     private fun showNotification(state: Int) {
+        Log.d(TAG, "showNotification: state=$state")
         if (activity == null) return
         createNotificationChannel()
 
@@ -160,9 +201,16 @@ class VideoPlayerPipPlugin: FlutterPlugin, MethodCallHandler, ActivityAware {
 
         // Action: Play/Pause
         val playPauseIntent = android.content.Intent(if (isPlaying) "com.rocky.pip.ACTION_PAUSE" else "com.rocky.pip.ACTION_PLAY").setPackage(activity!!.packageName)
+        
+        // Use different request codes for Play (100) and Pause (101) to avoid PendingIntent collisions/caching issues
+        val requestCode = if (isPlaying) 101 else 100
+        
         val playPausePendingIntent = android.app.PendingIntent.getBroadcast(
-            activity, 1, playPauseIntent, android.app.PendingIntent.FLAG_IMMUTABLE or android.app.PendingIntent.FLAG_UPDATE_CURRENT
+            activity, requestCode, playPauseIntent, android.app.PendingIntent.FLAG_IMMUTABLE or android.app.PendingIntent.FLAG_UPDATE_CURRENT
         )
+        
+        Log.d(TAG, "Creating Notification Action: ${if (isPlaying) "PAUSE" else "PLAY"} (requestCode: $requestCode)")
+
         val playPauseAction = androidx.core.app.NotificationCompat.Action(
             if (isPlaying) android.R.drawable.ic_media_pause else android.R.drawable.ic_media_play,
             if (isPlaying) "Pause" else "Play",
@@ -207,6 +255,7 @@ class VideoPlayerPipPlugin: FlutterPlugin, MethodCallHandler, ActivityAware {
     }
 
     override fun onDetachedFromEngine(binding: FlutterPlugin.FlutterPluginBinding) {
+        binding.applicationContext.unregisterReceiver(mediaReceiver)
         channel.setMethodCallHandler(null)
         mediaSession?.release()
         mediaSession = null

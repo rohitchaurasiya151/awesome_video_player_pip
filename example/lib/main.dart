@@ -50,6 +50,13 @@ class PlayerManager extends ChangeNotifier {
         controller!.play();
         notifyListeners(); // Update UI with initialized controller
 
+        // Update Media Metadata for Lock Screen (iOS/Android)
+        VideoPlayerPip.instance.updateMediaMetadata(
+          title: "Big Buck Bunny",
+          artist: "Blender Foundation",
+          duration: controller!.value.duration.inSeconds.toDouble(),
+        );
+
         // Enable Auto PiP once initialized
         Future.delayed(const Duration(seconds: 1), () {
           if (controller != null) {
@@ -86,6 +93,25 @@ class PlayerManager extends ChangeNotifier {
         });
       }
     }
+    notifyListeners();
+  }
+
+  void play() {
+    controller?.play();
+    // Enable Auto PiP when playing
+    if (controller != null) {
+      VideoPlayerPip.enableAutoPip(
+        controller!,
+        width: controller!.value.size.width.toInt(),
+        height: controller!.value.size.height.toInt(),
+      );
+    }
+    notifyListeners();
+  }
+
+  void pause() {
+    controller?.pause();
+    VideoPlayerPip.disableAutoPip(); // Disable Auto PiP when paused
     notifyListeners();
   }
 
@@ -152,16 +178,22 @@ class _GlobalPlayerOverlayState extends State<GlobalPlayerOverlay> with WidgetsB
       final manager = PlayerManager.instance;
       switch (action) {
         case 'play':
-          manager.controller?.play();
+          manager.play();
           break;
         case 'pause':
-          manager.controller?.pause();
+          manager.pause();
           break;
         case 'next':
           print("Next video requested");
           break;
         case 'previous':
           print("Previous video requested");
+          break;
+        default:
+          if (action.startsWith('seekTo:')) {
+            final double position = double.tryParse(action.split(':')[1]) ?? 0.0;
+            manager.controller?.seekTo(Duration(milliseconds: (position * 1000).toInt()));
+          }
           break;
       }
     });
@@ -177,7 +209,14 @@ class _GlobalPlayerOverlayState extends State<GlobalPlayerOverlay> with WidgetsB
       final isPlaying = manager.controller!.value.isPlaying;
       if (isPlaying != _wasPlaying) {
         _wasPlaying = isPlaying;
-        VideoPlayerPip.instance.updateBackgroundPlaybackState(isPlaying: isPlaying);
+        final position = manager.controller!.value.position.inSeconds.toDouble();
+        final speed = manager.controller!.value.playbackSpeed;
+
+        VideoPlayerPip.instance.updateBackgroundPlaybackState(
+          isPlaying: isPlaying,
+          position: position,
+          speed: speed,
+        );
       }
     }
   }
