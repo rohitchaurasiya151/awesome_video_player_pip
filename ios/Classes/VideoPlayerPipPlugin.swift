@@ -138,6 +138,7 @@ public class VideoPlayerPipPlugin: NSObject, FlutterPlugin, AVPictureInPictureCo
                 NSLog("VideoPlayerPip: Controller already setup for this layer. Updating settings.")
                 if #available(iOS 14.2, *) {
                     existingController.canStartPictureInPictureAutomaticallyFromInline = true
+                    NSLog("VideoPlayerPip: Re-enabled auto PiP for existing controller")
                 }
                 completion(true)
                 return
